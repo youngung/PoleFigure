@@ -5,6 +5,8 @@
 print """
 cmb module calculates represetnative volume element, also
 known as the population of discrete grains.
+
+check if update is followed by submodule?
 """
 
 
