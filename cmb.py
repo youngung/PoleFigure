@@ -1,12 +1,19 @@
 ###
 ## Representative volume element maker
 ###
+
+print """
+cmb module calculates represetnative volume element, also
+known as the population of discrete grains.
+"""
+
+
 import matplotlib.pyplot as plt
 import numpy as np
 import math
 rand = np.random.rand
 randi = np.random.random_integers
-
+    
 
 def steglich_format(filename=None):
     """
