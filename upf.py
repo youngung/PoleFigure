@@ -377,13 +377,12 @@ def __epffiletrimmer__(block):
     pfdata = pfdata[1:]
     lines = []
     for i in range(len(pfdata)):
-        if len(pfdata[i])==75:
-            lines.append(pfdata[i][1:])
-        elif len(pfdata[i])==74:
+        if len(pfdata[i])==72:
             lines.append(pfdata[i][:])
             pass
-        else:
-            raise IOError, 'A single thread has an unexpected length'
+        elif len(pfdata[i])==73:
+            lines.append(pfdata[i][1:])
+            pass
         pass
     pfdata = lines     #       (maxkhi/dkhi + 1) * 4
     if len(pfdata)!=76:# 76 =  ((90 / 5) + 1) * 4 (4lines for one chi level)
