@@ -360,32 +360,41 @@ def epfformat(mode=None, filename=None):
 
 def __epffiletrimmer__(block):
     """
-    epffile trimmer for a single block of data
+    EPF (experimental pole figure) trimmer for a single block of data
+    EPF: The popLA format
     """
     pfdata = block.split('\n')
-    dkhi = float(pfdata[0][5:9])
-    fkhi = float(pfdata[0][9:14])
-    dphi = float(pfdata[0][14:19])
+    dkhi = float(pfdata[0][5:9])   #khi incremental angle
+    fkhi = float(pfdata[0][9:14])  #khi end angle
+    dphi = float(pfdata[0][14:19]) #phi incremental angle
     fphi = float(pfdata[0][19:24]) - dphi #written as 360 but it is only upto 355
+
+    ## now it is enfored to have 5 deg resolution, which
+    ## results in 19x72
     data = np.zeros((19,72)) ## intensities along khi and phi axes coordinate
     ## the rest information is neglected from the header
 
     pfdata = pfdata[1:]
     lines = []
     for i in range(len(pfdata)):
-        if len(pfdata[i])>70:
+        if len(pfdata[i])==75:
             lines.append(pfdata[i][1:])
+        elif len(pfdata[i])==74:
+            lines.append(pfdata[i][:])
             pass
+        else:
+            raise IOError, 'A single thread has an unexpected length'
         pass
     pfdata = lines     #       (maxkhi/dkhi + 1) * 4
     if len(pfdata)!=76:# 76 =  ((90 / 5) + 1) * 4 (4lines for one chi level)
         print 'len(pfdata) =', len(pfdata)
         print pfdata
         raise IOError, 'Unexpected pfdata format or type'
-    #for i in range(len(pfdata)/4):
+
     if True:
         for j in range(19): #90 / 5 + 1 #number of khi threads
             kh = pfdata[j*4: (j+1)*4] #along the same kh level
+            print 'kh as below\n', kh
             khline = ''
             for k in range(4):
                 khline = khline + kh[k]
@@ -393,15 +402,12 @@ def __epffiletrimmer__(block):
             khline # all data in a thread of string every 4digits corresponds to a datum
             kp = 0 #each point along phi
             for k in range(72): #72 = 288 / 4 (4digits) : 0~355 5.0
-                datum= khline[k*4: (k+1)*4]
+                datum = khline[k*4:(k+1)*4]
                 data[j,k] = int(datum)
                 pass
             pass
         pass
     return data
-    
-    
-    
 
 def shiftphi(data, dp, phi):
     """ shifted phi modification """
@@ -739,7 +745,7 @@ class polefigure:
 
             ## POLE FIGURE MODE --------------------------------------
             print "type the experimental polfe figure mode"
-            print "'options: bruker, steglich (default: %s)"%'steglich'
+            print "'options: bruker, steglich, epf (default: %s)"%'steglich'
             epf_mode = raw_input(" >>>" )
             if len(epf_mode)==0:
                 epf_mode='steglich'
@@ -958,6 +964,20 @@ class polefigure:
 
                 ## add pole indices or pole figure file name
                 if self.epf_mode=='epf':
+                    hkl=raw_input(
+                        "Type the indices delimiter as a space (e.g. 1 1 1)>>>"
+                        )
+                    hkl = hkl.split()
+                    index = '('
+                    for i in hkl:
+                        index = index+'%i'%hkl[i]
+                        pass
+                    index = index + ')'
+                    x0, y0 = 0.4, -1.18
+                    r0, t0 = car2polar(x0, y0)
+                    axp.text(
+                        x=t0, y=r0, s=index, fontsize=8.*fact)
+                    
                     ### wait
                     pass
                 else:
@@ -966,7 +986,7 @@ class polefigure:
                     r0, t0 = cart2polar(x0, y0)                    
                     axp.text(x=t0, y=r0,
                              s=self.epf_fn[ip],
-                             fontsize=6.*fact/len(self.grid))
+                             fontsize=8.*fact/len(self.grid))
                     pass
                     
                 clev = cnt._levels
@@ -980,26 +1000,27 @@ class polefigure:
                     cc = tcolors[i][0][0:3]
                     ccr = tcolorsr[i][0][0:3]
                     if levels==None or ip==len(pole)-1:
-                        x0, y0 = 1.3, 1. - i * 0.2
+                        x0, y0 = 1.3, 0.8 - i * 0.2
                         r0, t0 = cart2polar(x0,y0)
                         axp.plot(t0, r0, marker='o', #ms=12./len(self.grid),
                                  #color=cc,
                                  mfc=cc,
-                                 ls='None', mec='None', 
-                                 markeredgewidth=0.7/len(self.grid)
+                                 ls='None', mec='black',
+                                 ms=7./len(self.grid),
+                                 markeredgewidth=0.01/len(self.grid)
                                  )
-                        axr.plot(t0, r0, marker='o', ms=12./len(self.grid),
+                        axr.plot(t0, r0, marker='o', ms=6./len(self.grid),
                                  #color=cc,
                                  mfc=cc,
-                                 ls='None', mec='None', 
-                                 markeredgewidth=0.7/len(self.grid)
+                                 ls='None', mec='black', 
+                                 markeredgewidth=0.01/len(self.grid)
                                  )                        
                         
-                        x2, y2 = 1.47, 1. - i *0.2 - 0.05
+                        x2, y2 = 1.35, 0.8 - i *0.2 - 0.05
                         r2, t2 = cart2polar(x2, y2)
                         axp.text(x=t2, y=r2,
                                  s='%4.2f'%(clev[i]),
-                                 fontsize=4.*fact#/len(self.grid)
+                                 fontsize=6.*fact#/len(self.grid)
                                  )
 
                         axr.text(x=t2, y=r2,
@@ -1012,20 +1033,20 @@ class polefigure:
                     r4, t4 = cart2polar(x4, y4)
                     axp.text(x=t4, y=r4,
                              s='RD',
-                             fontsize = 11*fact/len(self.grid))
+                             fontsize = 6.*fact/len(self.grid))
                     axr.text(x=t4, y=r4,
                              s='RD',
-                             fontsize = 11*fact/len(self.grid))
+                             fontsize = 6.*fact/len(self.grid))
                     
                     x5, y5 = 1.05, 0.
                     r5, t5 = cart2polar(x5, y5)
                     axp.text(x=t5, y=r5,
                              s='TD',
-                             fontsize = 11*fact/len(self.grid))
+                             fontsize = 6.*fact/len(self.grid))
                     axp.set_axis_off()
                     axr.text(x=t5, y=r5,
                              s='TD',
-                             fontsize = 11*fact/len(self.grid))
+                             fontsize = 6.*fact/len(self.grid))
                     axr.set_axis_off()                    
                     pass
                 
@@ -1168,18 +1189,18 @@ class polefigure:
             start = time.time()                                             
             for ip in range(len(pole)):
                 # Polar cell and nodes generation.
-                f, nodes = self.cells(pole=pole[ip], ifig=None,
-                                      dm=dm, dn=dn,
-                                      cdim=self.cdim,
-                                      cang=self.cang,
-                                      csym=self.csym)
+                f, nodes = self.cells(
+                    pole=pole[ip],
+                    ifig=None,
+                    dm=dm, dn=dn,
+                    cdim=self.cdim,
+                    cang=self.cang,
+                    csym=self.csym)
                 N.append(nodes)
                 print 'node shape:', nodes.shape
-                
+                pass
             print "%5.2f seconds elapsed during caling self.cells\n"%(time.time() - start)
             del nodes
-
-
             
             ## resolution and pole figure plotting preferences
             nm = (360.0 - 0.)/dm; nn = (180.-90.)/dn
@@ -1218,7 +1239,7 @@ class polefigure:
                     if levels==None:
                         if cmode!=None:
                             cnt = ax.contour(
-                                x,y,nodes,
+                                x, y, nodes,
                                 cmap=plt.cm.cmap_d[cmode])
                             pass
                         else: cnt = ax.contour(
@@ -1228,10 +1249,9 @@ class polefigure:
                     elif levels!=None:
                         if cmode!=None: cnt = ax.contour(
                             x, y, nodes, cmap=plt.cm.cmap_d[cmode])
-                        else: cnt = ax.contour(x,y,nodes, levels)#, cmap=plt.cm.bone);pass
+                        else: cnt = ax.contour(x, y, nodes, levels)#, cmap=plt.cm.bone);pass
                         pass
                     pass
-                
                 elif mode=='contourf':
                     if levels==None:
                         if cmode!=None:
@@ -1330,6 +1350,7 @@ class polefigure:
                     cdim=self.cdim, cang=self.cang,
                     csym=self.csym)
                 Zs.append(Z)
+                pass
             print "%5.2f seconds elapsed during calling self.cells\n"%(
                 time.time()-start)
             del Z
@@ -1377,7 +1398,7 @@ class polefigure:
                 for i in range(len(tcolors)):
                     cc = tcolors[i][0][0:3]
                     if levels==None or ip==len(pole)-1:
-                        x0, y0 = 1.3, 1. - i * 0.2
+                        x0, y0 = 1.3, 0.8 - i * 0.2
                         r0, t0 = cart2polar(x0,y0)
                         axp.plot(t0, r0, marker='o',
                                  ls='None', mec='black',
@@ -1385,7 +1406,7 @@ class polefigure:
                                  ms=7./len(pole),
                                  markeredgewidth=0.01/len(pole)
                                  )
-                        x2, y2 = 1.45, 1. - i *0.2 - 0.05
+                        x2, y2 = 1.40, 0.8 - i *0.2 - 0.05
                         r2, t2 = cart2polar(x2, y2)
                         axp.text(x=t2, y=r2,
                                  s='%4.2f'%(clev[i]),
