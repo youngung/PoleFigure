@@ -1,5 +1,5 @@
 """
-ver: Date : 2011-13-Mar
+ver: 2011-13-Mar
 
 Features:
 
@@ -186,7 +186,7 @@ def epfformat(mode=None, filename=None):
     
     Returns the pole figure data as
     the standard format (m x n numpy array)
-    each of axes stands for rotating and tilting
+    each of axes stands for rotating (phi) and tilting (khi)
     angle in the laboratory space.
     These angles will be angle and radius in the
     space onto which a pole figure is projected.
@@ -278,7 +278,7 @@ def epfformat(mode=None, filename=None):
             pass
 
         ## calculated pole figure format
-        elif i==nskip_calc:
+        elif i==nskip_calc: #He had two formats: raw and calculated.
             print 'Calculated pole figure format'
             # axes: (phi, khi)
             data = data.T #(khi, phi)
@@ -300,19 +300,15 @@ def epfformat(mode=None, filename=None):
             phi, data = shiftphi(data, dp, phi)
             ##
 
-            print data.shape
             ## check if there is phi=0, 360 at the same time
-            print phi * 180./np.pi
             phi, data = duplicate0_360(phi, data)
             ##
-            print data.shape
-            print phi
-
             pass
         
     elif mode=='bruker':
         ## make full use of existing uxd.py script
         ## --> normalization is missing...
+        ## This must be completed!
         import uxd
         print 'You are now in the bruker mode under epfformat'
         print 'given file name is %s'%filename
@@ -325,21 +321,36 @@ def epfformat(mode=None, filename=None):
             pf = pfnorm(pf) ##normalize
             pass
         pass
+    
     elif mode=='epf':
         """
-        ready made epf format reader
+        ready made popLA epf format reader
         consider the possibility of multiple number of polefigure
         ## phi must be 0~355, khi must be 0~90 with 5 as an ang resolution
         """
         print 'You are now reading %s'%filename
         blocks = open(filename, 'rU').read().split('(')[1:]
+        
         npf = len(blocks)
         datasets = []
+        max_khi = []
         for i in range(len(blocks)):
-            d = __epffiletrimmer__(blocks[i])
+            #d = __epffiletrimmer__(blocks[i]) #only for popLA epf format
+            ## epffiletrimmer should return a block of intensity grid map
+            ## as well as maximum khi.
+            ## --> modification (2011 NOV 8)
+            hkl = blocks[i][0:3] #hkl
+            hkl = map(int, [hkl[0],hkl[1],hkl[2]])
+            if blocks[i][3]!=')':
+                print 'Caution: unexpected hkl labeling format'
+                pass
+            d, mxk = __epffiletrimmer__(blocks[i]) #only for popLA epf format
             datasets.append(d)
+            max_khi.append(mxk)
             pass
         print "number of pole figures:", len(datasets)
+
+        ## presumption of using 19x72 should be deprecated...
         data = np.zeros((len(datasets), 19, 72)) #npf, nphi, nkhi
         dum = data.copy()
         for i in range(len(datasets)):
@@ -347,14 +358,15 @@ def epfformat(mode=None, filename=None):
                 for k in range(len(datasets[i][j])):
                     data[i,j,k] = datasets[i][j][k]
         ## Swap the axis
-        data = data.swapaxes(1,2)
+        data = data.swapaxes(1,2) #say, 72 x 19 than 19 x 72
 
-        ## normalization
+        ## psuedo-normalization
         for i in range(len(data)):
             if raw_input('y(norm), or n(no) >>> ')=='y':
                 data[i] = pfnorm(data[i].copy())
-            pass
-        return data
+        ## --
+                
+        return data, max_khi, hkl
     else: raise IOError, 'Unexpected mode is given'
     return data
 
@@ -385,7 +397,7 @@ def __epffiletrimmer__(block):
             pass
         pass
     pfdata = lines     #       (maxkhi/dkhi + 1) * 4
-    if len(pfdata)!=76:# 76 =  ((90 / 5) + 1) * 4 (4lines for one chi level)
+    if len(pfdata)!=76:# 76 =  ((90 / 5) + 1) * 4 (4lines for one khi level)
         print 'len(pfdata) =', len(pfdata)
         print pfdata
         raise IOError, 'Unexpected pfdata format or type'
@@ -393,7 +405,6 @@ def __epffiletrimmer__(block):
     if True:
         for j in range(19): #90 / 5 + 1 #number of khi threads
             kh = pfdata[j*4: (j+1)*4] #along the same kh level
-            print 'kh as below\n', kh
             khline = ''
             for k in range(4):
                 khline = khline + kh[k]
@@ -406,7 +417,10 @@ def __epffiletrimmer__(block):
                 pass
             pass
         pass
-    return data
+    
+    # block of mesh grid pole figure map and khi final angle.
+    return data, fkhi
+
 
 def shiftphi(data, dp, phi):
     """ shifted phi modification """
@@ -723,44 +737,65 @@ class polefigure:
         elif filename!=None:
             self.gr = np.genfromtxt(fname=filename,skiprows=4)
             pass
-        elif epf!=None:
+        elif epf!=None: # None is the default for epf
             """
             experimental pole figures..
              # available format:
                  - UXD
-                 - steglich*
+                 - steglich
                  - bruker
                  - epf*
             """
-            fn = []
-            print 'type the experimental pole figure file names'
-            print "To finish input, press enter"
-            while True:
-                dum = raw_input(">>> ")
-                if len(dum)==0: break
-                fn.append(dum)
+            if type(epf).__name__=='list': self.epf_fn = epf
+            elif type(epf).__name__=='str': self.epf_fn = [epf]
+            elif epf==True:
+                fn = [] # list of file names
+                print 'type the experimental pole figure file names'
+                print "To finish input, press enter"
+                while True:
+                    dum = raw_input(">>> ")
+                    if len(dum)==0: break
+                    fn.append(dum)
+                    pass
+                self.epf_fn = fn
                 pass
-            self.epf_fn = fn
+            else: raise IOError, 'Unexpected epf type found'
+
+            ## check if the file name is correct ##
+            for i in range(len(self.epf_fn)):
+                if not(os.path.isfile(self.epf_fn[i])):
+                    raise IOError, "Could not find %s"%self.epf_fn[i]
+                pass
+            ## --------------------------------- ##                    
 
             ## POLE FIGURE MODE --------------------------------------
-            print "type the experimental polfe figure mode"
-            print "'options: bruker, steglich, epf (default: %s)"%'steglich'
+            print "Type the experimental polfe figure mode"
+            print "Available options:", #continuation
+            print "bruker, steglich, epf (default: %s)"%'epf'
             epf_mode = raw_input(" >>>" )
             if len(epf_mode)==0:
                 epf_mode='steglich'
                 pass
             ##---------------------------------------------------------
-            
-            self.grid = []
+
+            self.grid = []; self.hkl = []
+            ## more than one pf can be included.
+            npole_per_file = []
+            if epf_mode=='epf': self.max_khi = [] #Available only for epf_mode yet.
+
             for i in range(len(self.epf_fn)):
                 if epf_mode=='epf':
-                    ## more than one pf can be included.
-                    data = epfformat(
+                    data, maxk, hkl = epfformat(
                         mode=epf_mode,
                         filename=self.epf_fn[i]
                         )
-                    self.grid = data # ??
-                    pass
+                    # one file may include multiple poles
+                    for i in range(len(data)): 
+                        self.grid.append(data[i])
+                        self.max_khi.append(maxk[i])
+                        self.hkl.append(hkl)
+                    npole_per_file.append(len(data)) # of pole per a file
+                    
                 else:
                     data = epfformat(
                         mode=epf_mode,
@@ -769,17 +804,20 @@ class polefigure:
                     self.grid.append(
                         data
                         )
-                    pass
-                pass
+                    self.hkl.append(None)
+            self.grid = np.array(self.grid)
             self.epf_mode=epf_mode
-            pass
 
+        ## EXPERIMENTAL POLE FIGURE 
+        ## ---------------------------------------------------------- ##
+        ## POLE FIGURES BINNINGED FROM THE POLYCRYSTALLINE AGGREGATES ##
+            
         if epf==None:
             dat = self.gr.transpose()
             phi1 =dat[0]
             phi = dat[1]
             phi2 = dat[2]
-            
+
             print 'phi1: %i ~ %i'%(
                 int(round(min(dat[0]/90.)))*90, int(
                     round(max(dat[0]/90.)))*90)
@@ -820,288 +858,239 @@ class polefigure:
             pass
         pass
 
-    def epfplot(self, ifig, mode, cmode, levels,rot):
+    def epfplot(self, ifig, mode, cmode, levels, rot):
         """
         if self.epf!=None:, pf is redirected to this defunc.
+
+        * pole figure master data: self.grid
+          [i]: i-th pole
+          [i][j]: i-th pole's j-th phi segment's khi 
+          [i][j][k]: An intensity (count) at i-th pole's j-th phi sement at the k-th khi
         """
-        if True:
-            print 'ifig=',ifig
-            fact = 2.
-            figsiz = (len(self.grid)* 2.8 * fact, 1.*2.*fact)
-            fig = plt.figure(ifig,   figsize=figsiz) #polar axes figure
-            figc= plt.figure(ifig+10, figsize=figsiz)
-            figr= plt.figure(ifig+20, figsize=figsiz)
-            fig.clf(); figc.clf(); figr.clf() #clear the canvas.
-            nrow = len(self.grid)
+        print 'List of files:'
+        for f in self.epf_fn: print '%s '%f
+        #print 'dimension of self.grid:', self.grid.shape
+        print 'ifig=',ifig
 
-            ## loop over each of pole figures
-            for ip in range(len(self.grid)):
-                # each pole figure set
-                pf = np.zeros((self.grid[ip].shape[0]+1, self.grid[ip].shape[1]))
-                for i in range(len(self.grid[ip])):
-                    for j in range(len(self.grid[ip][i])):
-                        #0, 5, 10 ... 350, 355, 360 : phi
-                        pf[i,j] = self.grid[ip][i][j]
-                        pf[-1,j] = self.grid[ip][0][j]
-                        pass
+        fact = 2.
+        figsize = (len(self.grid)* 2.8 * fact, 1.*2.*fact)
+        fig  = plt.figure(ifig,    figsize=figsize) #polar axes figure
+        figc = plt.figure(ifig+10, figsize=figsize)
+        figr = plt.figure(ifig+20, figsize=figsize)
+        fig.clf(); figc.clf(); figr.clf() #clear the canvas.
+        fig  = plt.figure(ifig,    figsize=figsize) #polar axes figure
+        figc = plt.figure(ifig+10, figsize=figsize)
+        figr = plt.figure(ifig+20, figsize=figsize)        
+        nrow = len(self.grid)
+
+        ## loop over each of pole figures
+        for ip in range(len(self.grid)): #upon each of self.eps_fn
+            # each pole figure set
+            pf = np.zeros((self.grid[ip].shape[0]+1, self.grid[ip].shape[1]))
+            for i in range(len(self.grid[ip])):
+                for j in range(len(self.grid[ip][i])):
+                    #0, 5, 10 ... 350, 355, 360 : phi
+                    pf[i,j] = self.grid[ip][i][j]
+                    pf[-1,j] = self.grid[ip][0][j]
                     pass
-                    
-                nm = len(pf) #phi
-                nn = len(pf[0]) #khi
-                dp = 360. / nm
-                dk = 90. / nn
-                phi = np.linspace(0., 2.*np.pi, nm)
-                khi = np.linspace(np.pi, np.pi/2., nn)
-                khi_r = khi[0:-2]                     #reduced khi_r
-                r = np.sin(khi)/(1-np.cos(khi))
-                rr = np.sin(khi_r)/(1-np.cos(khi_r)) #reduced rr..
+                pass
 
-                ##
-                ## prescribed rotation
-                phi = phi + rot * np.pi/180.
-                R, PHI = np.meshgrid(r, phi)    #meshing radius and rotation angle
-                RR, PHIR= np.meshgrid(rr,phi)
-                PHI = PHI + np.pi/2. # rotation the pole figure up.
-                PHIR = PHIR + np.pi/2. # rotation the pole figure up.
-                phi = phi + np.pi/2. # rotation the pole figure up.
-                x = R*np.cos(PHI); y = R*np.sin(PHI) #convert the polar coord
-                #                                    #-> cartensian
-                x_r = RR*np.cos(PHIR); y_r = RR*np.sin(PHIR)
-                #convert the polar coord-> cartensian                
-                
+            nm = len(pf) #phi
+            nn = len(pf[0]) #khi
+            dp = 360. / nm
+            dk = 90. / nn
+            phi = np.linspace(0., 2.*np.pi, nm)
+            khi = np.linspace(np.pi, np.pi/2., nn)
+            khi_r = khi[0:-2]                     #reduced khi_r
+            r = np.sin(khi)/(1-np.cos(khi))
+            rr = np.sin(khi_r)/(1-np.cos(khi_r)) #reduced rr..
 
-                ## polar and Cartesian canvas
-                axp = fig.add_subplot(
-                    1, nrow, ip+1, polar=True)
-                axr = figr.add_subplot(
-                    1, nrow, ip+1, polar=True)                
-                axc = figc.add_subplot(
-                    1, nrow, ip+1)
-                ## ------------------------------ ##
-                    
-                ########################################
-                ## border line drawing
-                ##
-                # polar
-                r0 = np.ones(100) 
-                t0 = np.linspace(0., np.pi*2, 100)
-                axp.plot(t0, r0, color='gray', alpha=0.5)
-                axr.plot(t0, r0, color='gray', alpha=0.5)
-                max_khi = 80#upto 80 degree is convetional to me...
-                max_khi = (90 - max_khi) + 90
-                max_khi = max_khi * np.pi/180.
-                # _ max khi outline 
-                r0 = np.sin(max_khi)/(1-np.cos(max_khi))
-                r0 = np.ones(100) * r0
-                axp.plot(t0, r0, 'k')
-                axr.plot(t0, r0, 'k')
-                # cartesian
-                x0, y0 = circle()
-                axc.plot(x0, y0, color='gray', alpha=0.5)
-                # _ max khi outline on the cartesian
-                x0, y0 = circle(r=r0[0])
-                axc.plot(x0, y0, 'k')
-                ########################################
+            ##
+            ## prescribed rotation
+            phi = phi + rot * np.pi/180.
+            R, PHI = np.meshgrid(r, phi)    #meshing radius and rotation angle
+            RR, PHIR= np.meshgrid(rr,phi)
+            PHI = PHI + np.pi/2. # rotation the pole figure up.
+            PHIR = PHIR + np.pi/2. # rotation the pole figure up.
+            phi = phi + np.pi/2. # rotation the pole figure up.
+            x = R*np.cos(PHI); y = R*np.sin(PHI) #convert the polar coord
+            #                                    #-> cartensian
+            x_r = RR*np.cos(PHIR); y_r = RR*np.sin(PHIR)
+            #convert the polar coord-> cartensian                
 
-                cnt = axp.contour(
-                    phi.copy(), r.copy(), pf.T,
-                    linewidth=1./len(self.grid),
-                    #cmap = plt.cm.gray_r
-                    )
-                ##
-                pfr = pf.T.copy()
-                pfr = pfr[0:-2] #remove outer two layers.
-                # print pfr.shape, phi.shape, rr.shape
-                # print pf.shape, phi.shape, r.shape
-                cntr = axr.contour(
-                    phi.copy(), rr.copy(), pfr,
-                    linewidth=1./len(self.grid),
-                    #cmap = plt.cm.gray_r
-                    )
-                
-                # cnt = axp.contour(
-                #     phi.copy(), r.copy(), pf.T,
-                #     linewidth=1./len(self.grid),
-                #     #cmap = plt.cm.gray_r
-                #     )
-                # print x.shape
-                # print y.shape
-                # print pf.T.shape
-                #raw_input()
-                cntc = axc.contour(
-                    x.copy(), y.copy(), pf,
-                    linewidth=1./len(self.grid),
-                    )
 
-                pcm = axp.pcolormesh(
-                    phi.copy(), r.copy(), pf.T,
-                    #ls='None'
-                    #alpha= 0.75,
-                    #cmap = plt.cm.gray_r
-                    )
-                
-                pcmr = axr.pcolormesh(
-                    phi.copy(), rr.copy(), pfr,
-                    #ls='None'
-                    #alpha= 0.75,
-                    #cmap = plt.cm.gray_r
-                    )
-                
-                # pcmc = axc.pcolormesh(
-                #     x.copy(), y.copy(), pf.T,
-                #     ls='None'
-                #     #alpha= 0.75,
-                #     #cmap = plt.cm.gray_r
-                #     )        
+            ## polar and Cartesian canvas
+            axp = fig.add_subplot(
+                1, nrow, ip+1, polar=True)
+            axr = figr.add_subplot(
+                1, nrow, ip+1, polar=True)                
+            axc = figc.add_subplot(
+                1, nrow, ip+1)
+            ## ------------------------------ ##
 
-                axp.set_axis_off()
-                axp.set_aspect('equal')
-                axc.set_axis_off()
-                axc.set_aspect('equal')
-                axr.set_axis_off()
-                axr.set_aspect('equal')                                
+            ########################################
+            ## border line drawing
+            ##
+            # polar
+            r0 = np.ones(100) 
+            t0 = np.linspace(0., np.pi*2, 100)
+            axp.plot(t0, r0, color='gray', alpha=0.5)
+            axr.plot(t0, r0, color='gray', alpha=0.5)
 
-                ## add pole indices or pole figure file name
-                if self.epf_mode=='epf':
+            print self.grid.shape
+            try: max_khi = self.max_khi[ip] # if popLA
+            except:
+                #upto 80 degree is convetional to me...
+                max_khi = 80.
+
+            max_khi = (90 - max_khi) + 90
+            max_khi = max_khi * np.pi/180.
+            # _ max khi outline 
+            r0 = np.sin(max_khi)/(1-np.cos(max_khi))
+            r0 = np.ones(100) * r0
+            axp.plot(t0, r0, 'k')
+            axr.plot(t0, r0, 'k')
+            # cartesian
+            x0, y0 = circle()
+            axc.plot(x0, y0, color='gray', alpha=0.5)
+            # _ max khi outline on the cartesian
+            x0, y0 = circle(r=r0[0])
+            axc.plot(x0, y0, 'k')
+            ########################################
+
+            cnt = axp.contour(
+                phi.copy(), r.copy(), pf.T,
+                linewidth=1./len(self.grid),
+                #cmap = plt.cm.gray_r
+                )
+            ##
+            
+            pfr = pf.T.copy()
+            pfr = pfr[0:-2] #remove outer two layers.
+            cntr = axr.contour(
+                phi.copy(), rr.copy(), pfr,
+                linewidth=1./len(self.grid),)
+            cntc = axc.contour(
+                x.copy(), y.copy(), pf,
+                linewidth=1./len(self.grid))
+
+            pcm = axp.pcolormesh(phi.copy(), r.copy(), pf.T)
+            pcmr = axr.pcolormesh(phi.copy(), rr.copy(), pfr)
+
+            axp.set_axis_off()
+            axp.set_aspect('equal')
+            axc.set_axis_off()
+            axc.set_aspect('equal')
+            axr.set_axis_off()
+            axr.set_aspect('equal')                                
+
+            ## add pole indices or pole figure file name
+            if self.epf_mode=='epf':
+                if self.hkl[ip]==None:
                     hkl=raw_input(
-                        "Type the indices delimiter as a space (e.g. 1 1 1)>>>"
-                        )
-                    hkl = hkl.split()
-                    index = '('
-                    for i in hkl:
-                        index = index+'%i'%hkl[i]
-                        pass
-                    index = index + ')'
-                    x0, y0 = 0.4, -1.18
-                    r0, t0 = car2polar(x0, y0)
-                    axp.text(
-                        x=t0, y=r0, s=index, fontsize=8.*fact)
-                    
-                    ### wait
-                    pass
-                else:
-                    ## filename
-                    x0, y0 = 0.4, -1.18
-                    r0, t0 = cart2polar(x0, y0)                    
-                    axp.text(x=t0, y=r0,
-                             s=self.epf_fn[ip],
-                             fontsize=8.*fact/len(self.grid))
-                    pass
-                    
-                clev = cnt._levels
-                clevr = cntr._levels                
-                clevc = cntc._levels
-                tcolors = cnt.tcolors
-                tcolorsc = cntc.tcolors
-                tcolorsr = cntc.tcolors
-
-                for i in range(len(tcolors)):
-                    cc = tcolors[i][0][0:3]
-                    ccr = tcolorsr[i][0][0:3]
-                    if levels==None or ip==len(pole)-1:
-                        x0, y0 = 1.3, 0.8 - i * 0.2
-                        r0, t0 = cart2polar(x0,y0)
-                        axp.plot(t0, r0, marker='o', #ms=12./len(self.grid),
-                                 #color=cc,
-                                 mfc=cc,
-                                 ls='None', mec='black',
-                                 ms=7./len(self.grid),
-                                 markeredgewidth=0.01/len(self.grid)
-                                 )
-                        axr.plot(t0, r0, marker='o', ms=6./len(self.grid),
-                                 #color=cc,
-                                 mfc=cc,
-                                 ls='None', mec='black', 
-                                 markeredgewidth=0.01/len(self.grid)
-                                 )                        
+                        "Type the indices delimiter as a space (e.g. 1 1 1)>>>")
                         
-                        x2, y2 = 1.35, 0.8 - i *0.2 - 0.05
-                        r2, t2 = cart2polar(x2, y2)
-                        axp.text(x=t2, y=r2,
-                                 s='%4.2f'%(clev[i]),
-                                 fontsize=6.*fact#/len(self.grid)
-                                 )
-
-                        axr.text(x=t2, y=r2,
-                                 s='%4.2f'%(clev[i]),
-                                 fontsize=4.*fact#/len(self.grid)
-                                 )
-                        pass
-                    ## RD and TD indication
-                    x4, y4 = -0.05, 1.05
-                    r4, t4 = cart2polar(x4, y4)
-                    axp.text(x=t4, y=r4,
-                             s='RD',
-                             fontsize = 6.*fact/len(self.grid))
-                    axr.text(x=t4, y=r4,
-                             s='RD',
-                             fontsize = 6.*fact/len(self.grid))
-                    
-                    x5, y5 = 1.05, 0.
-                    r5, t5 = cart2polar(x5, y5)
-                    axp.text(x=t5, y=r5,
-                             s='TD',
-                             fontsize = 6.*fact/len(self.grid))
-                    axp.set_axis_off()
-                    axr.text(x=t5, y=r5,
-                             s='TD',
-                             fontsize = 6.*fact/len(self.grid))
-                    axr.set_axis_off()                    
-                    pass
+                    hkl = map(int, hkl.split())
+                else: hkl = self.hkl[ip]
+                # (hkl)
+                index = '('
+                for hk in hkl: index = index+'%i'%hkl[hk]
+                index = index + ')'
                 
-                for i in range(len(tcolorsc)):
-                    cc = tcolorsc[i][0][0:3]
-                    if levels==None or ip==len(pole)-1:
-                        x0, y0 = 1.3, 1. - i * 0.2
-                        axc.plot(x0, y0, marker='o', ms=6./len(self.grid),
-                                 #color=cc,
-                                 mfc=cc,
-                                 ls='None', mec='None', 
-                                 markeredgewidth=0.7/len(self.grid)
-                                 )
-                        
-                        x2, y2 = 1.45, 1. - i *0.2 - 0.05
-                        axc.text(x=x2, y=y2,
-                                 s='%4.2f'%(clevc[i]),
-                                 fontsize=4.*fact/len(self.grid))
-                        pass
+                x0, y0 = 0.4, -1.18
+                r0, t0 = cart2polar(x0, y0)
+                axp.text(
+                    x=t0, y=r0, s=index, fontsize=8.*fact)
 
-                    ## RD and TD indication
-                    x4, y4 = -0.05, 1.05
-                    axc.text(x=x4, y=y4,
-                             s='RD', fontsize = 11.*fact/len(self.grid))
-                    x5, y5 = 1.05, 0.
-                    axc.text(x=x5, y=y5,
-                             s='TD', fontsize = 11.*fact/len(self.grid))
-                    axc.set_axis_off()
-                    #axr.set_ylim(0,1.7) #-->radius lim
-                    axc.set_xlim(-1.7,1.7)
-                    axc.set_ylim(-1.7,1.7)
-                    #axp.set_ylim(0,1.7)
+                ### wait
                 pass
-            #fig.savefig('fig_ax.pdf')
-            figc.savefig('fig_axc.pdf')
-            figc.savefig('fig_axc.eps')
-            figr.savefig('fig_axr.pdf')
-            figr.savefig('fig_axr.eps')
-            for i in range(len(figr.axes)):
-                extent = figr.axes[i].get_window_extent()
-                extent = extent.transformed(figr.dpi_scale_trans.inverted())
-                figr.savefig(
-                    'each_axr_%s.pdf'%str(i).zfill(2),
-                    bbox_inches=extent.expanded(1.1,1.1)
-                    )
-                figr.savefig(
-                    'each_axr_%s.eps'%str(i).zfill(2),
-                    bbox_inches=extent.expanded(1.1,1.1)
-                    )                
+            else:
+                ## filename
+                x0, y0 = 0.4, -1.18
+                r0, t0 = cart2polar(x0, y0)                    
+                axp.text(x=t0, y=r0,
+                         s=self.epf_fn[ip],
+                         fontsize=8.*fact/len(self.grid))
                 pass
 
-            
-            ## For experimental pole figure no binning process below is necessary
-            return
-            
+            clev = cnt._levels
+            clevr = cntr._levels                
+            clevc = cntc._levels
+            tcolors = cnt.tcolors
+            tcolorsc = cntc.tcolors
+            tcolorsr = cntc.tcolors
+
+            for i in range(len(tcolors)):
+                cc = tcolors[i][0][0:3]
+                if levels==None or ip==len(pole)-1:
+                    ## Colored marker 
+                    x0, y0 = 1.3, 0.8 - i * 0.2
+                    r0, t0 = cart2polar(x0,y0)
+                    axp.plot(t0, r0, marker='o',  mfc=cc, ms=7.,
+                             ls='None', mec='black',
+                             markeredgewidth=0.01/len(self.grid))
+                             
+                    axr.plot(t0, r0, marker='o', mfc=cc, ms=7., 
+                             ls='None', mec='black', 
+                             markeredgewidth=0.01/len(self.grid))
+
+                    ## Contour level
+                    x2, y2 = 1.35, 0.8 - i *0.2 - 0.05
+                    r2, t2 = cart2polar(x2, y2)
+                    axp.text(x=t2, y=r2, s='%4.2f'%(clev[i]),
+                             fontsize=4.*fact)
+                    axr.text(x=t2, y=r2,s='%4.2f'%(clev[i]),
+                             fontsize=4.*fact)
+                    pass
+
+                ## RD and TD indication
+                x4, y4 = -0.05, 1.05
+                r4, t4 = cart2polar(x4, y4)
+                axp.text(x=t4, y=r4, s='RD', fontsize = 6.*fact)
+                axr.text(x=t4, y=r4, s='RD', fontsize = 6.*fact)
+                x5, y5 = 1.05, 0.
+                r5, t5 = cart2polar(x5, y5)
+                axp.text(x=t5, y=r5, s='TD', fontsize = 6.*fact)
+                axr.text(x=t5, y=r5, s='TD', fontsize = 6.*fact)
+                axp.set_axis_off(); axr.set_axis_off()                    
+                pass
+
+            for i in range(len(tcolorsc)):
+                cc = tcolorsc[i][0][0:3]
+                if levels==None or ip==len(pole)-1:
+                    x0, y0 = 1.3, 1. - i * 0.2
+                    axc.plot(x0, y0, marker='o', ms=7.,
+                             mfc=cc, ls='None', mec='None', 
+                             markeredgewidth=0.7)
+                    x2, y2 = 1.45, 1. - i *0.2 - 0.05
+                    axc.text(x=x2, y=y2, s='%4.2f'%(clevc[i]),
+                             fontsize=4.*fact )
+                    pass
+                ## RD and TD indication
+                x4, y4 = -0.05, 1.05
+                axc.text(x=x4, y=y4, s='RD', fontsize = 6.*fact)
+                x5, y5 = 1.05, 0.
+                axc.text(x=x5, y=y5, s='TD', fontsize = 11.*fact)
+                axc.set_axis_off()
+                axc.set_xlim(-1.7,1.7)
+                axc.set_ylim(-1.7,1.7)
+                pass
+            pass
+
+        figc.savefig('fig_axc.pdf'); figc.savefig('fig_axc.eps')
+        figr.savefig('fig_axr.pdf'); figr.savefig('fig_axr.eps')
+        for i in range(len(figr.axes)):
+            extent = figr.axes[i].get_window_extent()
+            extent = extent.transformed(figr.dpi_scale_trans.inverted())
+            figr.savefig(
+                'each_axr_%s.pdf'%str(i).zfill(2),
+                bbox_inches=extent.expanded(1.1,1.1))
+            figr.savefig(
+                'each_axr_%s.eps'%str(i).zfill(2),
+                bbox_inches=extent.expanded(1.1,1.1))
+            pass
         return
+
 
     def pf(self, pole=[[1,0,0],[1,1,0],[1,1,1]], mode='contour',
            ifig=1, dm=7.5, dn=7.5, ssym=None, levels=None,
