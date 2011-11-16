@@ -869,10 +869,6 @@ class polefigure:
         print 'ifig=',ifig
 
         fact = 2.
-        #figsize = (len(self.grid) * fact, 1. * fact)
-        #fig  = plt.figure(ifig,    figsize=figsize) #polar axes figure
-        #figc = plt.figure(ifig+10, figsize=figsize)
-        #figr = plt.figure(ifig+20, figsize=figsize)
         nrow = len(self.grid)
 
         figs = []
@@ -934,16 +930,7 @@ class polefigure:
             PHIR = PHIR + np.pi/2. # rotation the pole figure up.
             phi = phi + np.pi/2. # rotation the pole figure up.
             x = R * np.cos(PHI); y = R*np.sin(PHI) #convert the polar coord
-            #                                    #-> cartensian
-            #convert the polar coord-> cartensian                
-
-            ## polar and Cartesian canvas
-            # axp = fig.add_subplot(
-            #     1, nrow, ip+1, polar=True)
-            # axr = figr.add_subplot(
-            #     1, nrow, ip+1, polar=True)                
-            # axc = figc.add_subplot(
-            #     1, nrow, ip+1)
+            
             each_ax = figs[ip].add_subplot(111, polar=True)
             ## ------------------------------------- ##
 
@@ -953,8 +940,6 @@ class polefigure:
             # polar
             r0 = np.ones(100) 
             t0 = np.linspace(0., np.pi*2, 100)
-            # axp.plot(t0, r0, color='gray', alpha=0.5)
-            # axr.plot(t0, r0, color='gray', alpha=0.5)
             each_ax.plot(t0, r0, color='gray', alpha=0.5)
 
             max_khi = (90 - max_khi) + 90
@@ -962,25 +947,10 @@ class polefigure:
             # _ max khi outline 
             r0 = np.sin(max_khi)/(1-np.cos(max_khi))
             r0 = np.ones(100) * r0
-            # axp.plot(t0, r0, 'k')
-            # axr.plot(t0, r0, 'k')
             each_ax.plot( t0, r0, 'k')
-            # cartesian
-            # x0, y0 = circle()
-            # axc.plot(x0, y0, color='gray', alpha=0.5)
-            # x0, y0 = circle(r=r0[0])
-            # axc.plot(x0, y0, 'k')
             ########################################
 
-            # cnt = axp.contour(
-            #     phi.copy(), r.copy(), pf.T,
-            #     linewidth=1./len(self.grid),
-            #     #cmap = plt.cm.gray_r
-            #     )
-
-            ##
-
-            #pfr = pfr[0:-2] #remove outer two layers.
+            # Trim out the unmeasured rims.
             pfr = pf.T.copy()
             if iidk==0: pass
             else: pfr = pfr[0:-iidk]
@@ -989,25 +959,7 @@ class polefigure:
                 phi.copy(), rr.copy(), pfr,
                 linewidth=1.)            
 
-            # cntr = axr.contour(
-            #     phi.copy(), rr.copy(), pfr,
-            #     linewidth=1./len(self.grid),)
-            # cntc = axc.contour(
-            #     x.copy(), y.copy(), pf,
-            #     linewidth=1./len(self.grid))
-
-            # pcm = axp.pcolormesh(phi.copy(), r.copy(), pf.T)
-            # pcmr = axr.pcolormesh(phi.copy(), rr.copy(), pfr)
             pcmr_each = each_ax.pcolormesh(phi.copy(), rr.copy(), pfr)
-
-            #each_ax.set_axis_off()
-
-            #axp.set_axis_off()
-            #axp.set_aspect('equal')
-            #axc.set_axis_off()
-            #axc.set_aspect('equal')
-            #axr.set_axis_off()
-            #axr.set_aspect('equal')                                
 
             ## add pole indices or pole figure file name
             x0, y0 = 0.4, -1.18
@@ -1022,8 +974,6 @@ class polefigure:
                 index = '('
                 for hk in hkl: index = index+'%i'%hk
                 index = index + ')'
-                # axp.text(
-                #     x=t0, y=r0, s=index, fontsize=8.*fact/len(self.grid))
                 each_ax.text(
                     x=t0, y=r0, s=index, fontsize=8.*fact)
                 pass
@@ -1037,9 +987,6 @@ class polefigure:
                 index = '('
                 for hk in hkl: index = index + '%i'%hkl[hk]
                 index = index + ')'
-                # axp.text(
-                #     x=t0, y=r0, s='%s %s'%(index, self.epf_fn[ip]),
-                #     fontsize=8.*fact/len(self.grid))
                 each_ax.text(
                     x=t0, y=r0, s='%s %s'%(index, self.epf_fn[ip]),
                     fontsize=8.*fact)
@@ -1047,14 +994,6 @@ class polefigure:
 
             tcolors = cnt_each.tcolors
             clev = cnt_each._levels
-            # clev = cnt._levels
-            # clevr = cntr._levels                
-            # clevc = cntc._levels
-            
-            # tcolors = cnt.tcolors
-            
-            # tcolorsc = cntc.tcolors
-            # tcolorsr = cntc.tcolors
 
             for i in range(len(tcolors)):
                 cc = tcolors[i][0][0:3]
@@ -1062,13 +1001,6 @@ class polefigure:
                     ## Colored marker 
                     x0, y0 = 1.3, 0.8 - i * 0.2
                     r0, t0 = cart2polar(x0,y0)
-                    # axp.plot(t0, r0, marker='o',  mfc=cc, ms=7.,
-                    #          ls='None', mec='black',
-                    #          markeredgewidth=0.01/len(self.grid))
-                             
-                    # axr.plot(t0, r0, marker='o', mfc=cc, ms=7., 
-                    #          ls='None', mec='black', 
-                    #          markeredgewidth=0.01/len(self.grid))
 
                     each_ax.plot(t0, r0, marker='o', mfc=cc, ms=7., 
                                  ls='None', mec='black', 
@@ -1077,10 +1009,6 @@ class polefigure:
                     ## Contour level
                     x2, y2 = 1.35, 0.8 - i *0.2 - 0.05
                     r2, t2 = cart2polar(x2, y2)
-                    # axp.text(x=t2, y=r2, s='%4.2f'%(clev[i]),
-                    #          fontsize=4.*fact)
-                    # axr.text(x=t2, y=r2,s='%4.2f'%(clev[i]),
-                    #          fontsize=4.*fact)
                     each_ax.text(x=t2, y=r2,s='%4.2f'%(clev[i]),
                                  fontsize=4.*fact)
 
@@ -1089,63 +1017,18 @@ class polefigure:
                 ## RD and TD indication
                 x4, y4 = -0.05, 1.05
                 r4, t4 = cart2polar(x4, y4)
-                # axp.text(x=t4, y=r4, s='RD', fontsize = 6.*fact)
-                # axr.text(x=t4, y=r4, s='RD', fontsize = 6.*fact)
                 each_ax.text(x=t4, y=r4, s='RD', fontsize = 6.*fact)                
                 x5, y5 = 1.05, 0.
                 r5, t5 = cart2polar(x5, y5)
-                # axp.text(x=t5, y=r5, s='TD', fontsize = 6.*fact)
-                # axr.text(x=t5, y=r5, s='TD', fontsize = 6.*fact)
                 each_ax.text(x=t5, y=r5, s='TD', fontsize = 6.*fact)
-                #axp.set_axis_off(); axr.set_axis_off()                    
                 pass
 
-            # for i in range(len(tcolorsc)):
-            #     cc = tcolorsc[i][0][0:3]
-            #     if levels==None or ip==len(pole)-1:
-            #         x0, y0 = 1.3, 1. - i * 0.2
-            #         axc.plot(x0, y0, marker='o', ms=7.,
-            #                  mfc=cc, ls='None', mec='None', 
-            #                  markeredgewidth=0.7)
-            #         x2, y2 = 1.45, 1. - i *0.2 - 0.05
-            #         axc.text(x=x2, y=y2, s='%4.2f'%(clevc[i]),
-            #                  fontsize=4.*fact )
-            #         pass
-            #     ## RD and TD indication
-            #     x4, y4 = -0.05, 1.05
-            #     axc.text(x=x4, y=y4, s='RD', fontsize = 6.*fact)
-            #     x5, y5 = 1.05, 0.
-            #     axc.text(x=x5, y=y5, s='TD', fontsize = 11.*fact)
-            #     axc.set_axis_off()
-            #     axc.set_xlim(-1.7,1.7)
-            #     axc.set_ylim(-1.7,1.7)
-            #     pass
-            
+            # Save individual pole figure
             figs[ip].savefig('figs_%s.pdf'%str(ip).zfill(2))
             figs[ip].savefig('figs_%s.eps'%str(ip).zfill(2))
             figs[ip].clf()
                              
             pass
-
-        # figc.savefig('fig_axc.pdf'); figc.savefig('fig_axc.eps')
-        # figr.savefig('fig_axr.pdf'); figr.savefig('fig_axr.eps')
-
-        # ## Save the subplots individually
-        # for i in range(len(figr.axes)):
-        #     extent = figr.axes[i].get_window_extent()
-        #     extent = extent.transformed(figr.dpi_scale_trans.inverted())
-        #     figr.savefig(
-        #         'each_axr_%s.pdf'%str(i).zfill(2),
-        #         bbox_inches=extent.expanded(1.1,1.1))
-        #     figr.savefig(
-        #         'each_axr_%s.eps'%str(i).zfill(2),
-        #         bbox_inches=extent.expanded(1.1,1.1))
-        #     pass
-        # ##
-
-        #clear the canvas.
-        #fig.clf(); figc.clf(); figr.clf() 
-        
         return
 
 
