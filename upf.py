@@ -932,6 +932,7 @@ class polefigure:
             x = R * np.cos(PHI); y = R*np.sin(PHI) #convert the polar coord
             
             each_ax = figs[ip].add_subplot(111, polar=True)
+            each_ax.set_axis_off()
             ## ------------------------------------- ##
 
             ########################################
