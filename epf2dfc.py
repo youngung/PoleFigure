@@ -30,15 +30,12 @@ def __gen__(ext='*.epf'):
             ang = np.arange(0, 90+tiny, dkhi)
 
             # maxi khi trim the datasets[i]
-            
 
             avg = __avg__(datasets[i])
             DefocusCurve = __NormReci__(avg) #avg: a list type variable
             plt.plot(ang, DefocusCurve)
+            ax=plt.gca(); ax.set_xlabel(r'$\chi$')
             #print DefocusCurve
-
-
-            
     pass
 
 def __read__(fn):
