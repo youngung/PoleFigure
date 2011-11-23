@@ -142,19 +142,28 @@ def Nomen2Bunge(phi1, phi, phi2, nomen):
     """ Euler nomenclature translator to Bunge"""
     nomen = nomen.upper() #make it upper case
     # Kocks
-    if nomen is in ['K','KOCKS']:
+    if nomen in ['K','KOCKS']:
         phi1 = phi1 - 90.
         phi = -phi
         phi2 = (-phi2-90.)
         pass
     # ROE
-    elif nomen is in ['R','ROE']:
+    elif nomen in ['R','ROE']:
         phi1 = phi1 + 90.
         phi = phi
         phi2 = phi2 - 90.
         pass
-    elif momen is in ['B','BUNGE']: pass
+    elif momen in ['B','BUNGE']: pass
     return phi1, phi, phi2
+
+def Nomen2BungePolyXtal(gr, nomen):
+    """ convert a polycrystalline's angles into Bunge"""
+    if nomen.upper() in ['B','BUNGE']
+    for i in range(len(gr)):
+        phi1, phi, phi2 = gr[i][0:3]
+        gr[i][0:3] = Nomen2Bunge(phi1, phi, phi2, nomen)
+        pass
+    return gr
 
 def pfnorm(data):
     """
@@ -745,6 +754,7 @@ class polefigure:
         cang=[90.,90.,90.]
         ssym=False : Sample symmetry: not even started...
         epf = None : experimental pole figure file
+        nomenclature='Bunge' Euler angle nomenclature flag
         """
         # The grain aggregte can be given either through a file or #
         # passing an array of them to the class directly.          #
