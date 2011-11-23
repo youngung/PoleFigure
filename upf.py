@@ -122,6 +122,40 @@ import time
 import random
 #import pp ## parallel
 
+def ftexinput(filename):
+    """ Standard reader of texture file """
+    fourthline = open(filename, 'r').readlines()
+    nomen = fourthline[4].split()[0]
+    gr = np.loadtxt(filename, skiprows=4).T
+    if nomen.upper() is in ['B','BUNGE']: pass
+    else:
+        for i in range(len(gr)):
+            phi1, phi, phi2 = gr[i][0:3]
+            phi1, phi, phi2 = Nomen2Bunge(
+                phi1,phi,phi2,nomen=nomen)
+            gr[i][0:3]= phi1, phi, phi2
+            pass
+        pass
+    return gr
+
+def Nomen2Bunge(phi1, phi, phi2, nomen):
+    """ Euler nomenclature translator to Bunge"""
+    nomen = nomen.upper() #make it upper case
+    # Kocks
+    if nomen is in ['K','KOCKS']:
+        phi1 = phi1 - 90.
+        phi = -phi
+        phi2 = (-phi2-90.)
+        pass
+    # ROE
+    elif nomen is in ['R','ROE']:
+        phi1 = phi1 + 90.
+        phi = phi
+        phi2 = phi2 - 90.
+        pass
+    elif momen is in ['B','BUNGE']: pass
+    return phi1, phi, phi2
+
 def pfnorm(data):
     """
     experimental incomplete pole figure preliminary normalization
@@ -689,7 +723,9 @@ refer to the RVE class in cmb.py module.
 class polefigure:
     # decides if the given set is in the texture file form or array
     def __init__(self, grains=None, filename=None, csym=None, ngrain=100,
-                 cdim=[1.,1.,1.], cang=[90.,90.,90.], ssym=False, epf=None):
+                 cdim=[1.,1.,1.], cang=[90.,90.,90.], ssym=False, epf=None,
+                 nomenclature='Bunge'
+                 ):
         """
         ----------------
         class polefigure
@@ -730,7 +766,7 @@ class polefigure:
             self.gr = np.array(temp)
 
         self.epf = epf # global 
-        
+
         if grains!=None:
             self.gr = np.array(grains)
         elif filename!=None:
