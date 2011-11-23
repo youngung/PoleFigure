@@ -5,4 +5,5 @@ setup(name='upf',
       description='The ultimate pole figure plotting system on python',
       author ='Youngung Jeong',
       author_email='youngung.jeong@gmail.com',
+      package_dir={''}
       )
