@@ -126,13 +126,13 @@ def ftexinput(filename):
     """ Standard reader of texture file """
     fourthline = open(filename, 'r').readlines()
     nomen = fourthline[4].split()[0]
-    gr = np.loadtxt(filename, skiprows=4).T
-    if nomen.upper() is in ['B','BUNGE']: pass
+    gr = np.loadtxt(filename, skiprows=4)
+    if nomen.upper() in ['B','BUNGE']: pass
     else:
         for i in range(len(gr)):
             phi1, phi, phi2 = gr[i][0:3]
             phi1, phi, phi2 = Nomen2Bunge(
-                phi1,phi,phi2,nomen=nomen)
+                phi1,phi,phi2,nomen)
             gr[i][0:3]= phi1, phi, phi2
             pass
         pass
@@ -153,12 +153,12 @@ def Nomen2Bunge(phi1, phi, phi2, nomen):
         phi = phi
         phi2 = phi2 - 90.
         pass
-    elif momen in ['B','BUNGE']: pass
+    elif nomen in ['B','BUNGE']: pass
     return phi1, phi, phi2
 
 def Nomen2BungePolyXtal(gr, nomen):
     """ convert a polycrystalline's angles into Bunge"""
-    if nomen.upper() in ['B','BUNGE']
+    if nomen.upper() in ['B','BUNGE']: return gr
     for i in range(len(gr)):
         phi1, phi, phi2 = gr[i][0:3]
         gr[i][0:3] = Nomen2Bunge(phi1, phi, phi2, nomen)
@@ -733,7 +733,6 @@ class polefigure:
     # decides if the given set is in the texture file form or array
     def __init__(self, grains=None, filename=None, csym=None, ngrain=100,
                  cdim=[1.,1.,1.], cang=[90.,90.,90.], ssym=False, epf=None,
-                 nomenclature='Bunge'
                  ):
         """
         ----------------
@@ -754,7 +753,6 @@ class polefigure:
         cang=[90.,90.,90.]
         ssym=False : Sample symmetry: not even started...
         epf = None : experimental pole figure file
-        nomenclature='Bunge' Euler angle nomenclature flag
         """
         # The grain aggregte can be given either through a file or #
         # passing an array of them to the class directly.          #
@@ -771,16 +769,20 @@ class polefigure:
             gr = np.array(a.euler).transpose()
             gr = np.array([gr[1],gr[2],gr[3]]).transpose()
             temp = []
+            volf = 1./ngrain
             for i in range(len(gr)):
-                temp.append([gr[i][0],gr[i][1],gr[i][2],0.01])
+                temp.append([gr[i][0],gr[i][1],gr[i][2], volf])
             self.gr = np.array(temp)
+            pass
 
         self.epf = epf # global 
 
         if grains!=None:
             self.gr = np.array(grains)
         elif filename!=None:
-            self.gr = np.genfromtxt(fname=filename,skiprows=4)
+            # Nomenclature is enforced to be 'Bunge'.
+            # in ftexiput. All is converted into Bunge convention.
+            self.gr = ftexinput(filename)
             pass
         elif epf!=None: # None is the default for epf
             """
