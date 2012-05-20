@@ -587,8 +587,13 @@ def projection(pole=None, agrain=None):
         
     a = pole[0]; b = pole[1]; c = pole[2]
     ###  mid-plane projection (z=0)
-    X = a/(c-1)
-    Y = b/(c-1)
+    if c == 1.0:
+        X = 0
+        Y = 0
+    else:
+
+        X = a/(c-1)
+        Y = b/(c-1)
     return X,Y
 
 def invproj(x=None,y=None):
