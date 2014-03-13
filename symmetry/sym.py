@@ -7,6 +7,7 @@ Cubic and hexagonal operators are available.
 def cubic()
 def hexag()
 def tetra()
+def triclinic()
 """
 
 import numpy as np
@@ -190,6 +191,10 @@ def cubic():
         H[i] = __trim0__(h=H[i])
     return H    
 
+def triclinic():
+    H = []
+    H.append(np.identity(3))
+    return H
 
 ## hexagonal
 def hexag():
@@ -257,7 +262,6 @@ def tetra():
         H[i] = __trim0__(h=H[i])
     return H
 
-
 ## 
 
 
@@ -284,7 +288,8 @@ def cvec(cdim=None, cang=None):
     cvec[1,0] = 0.
     cvec[2,0] = np.cos(cang[1])
     
-    cvec[0,1] = (np.cos(cang[2])-np.cos(cang[0])*np.cos(cang[1]))/np.sin(cang[1])
+    cvec[0,1] = (np.cos(cang[2])-np.cos(cang[0])\
+                     *np.cos(cang[1]))/np.sin(cang[1])
     cvec[2,1] = np.cos(cang[0])
     cvec[1,1] = np.sqrt(1.-cvec[0,1]**2-cvec[2,1]**2)
     
