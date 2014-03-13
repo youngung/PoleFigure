@@ -1,15 +1,12 @@
 """
 Generates random texture and combines with ODF descritized
-
 Practical extension(s) are located down below the class declaration
-
 """
 
 from math import *
 from random import *
 import numpy as np
 
-# what's wrong?
 class randomEuler:
     """
     A random euler angle generator
@@ -20,9 +17,17 @@ class randomEuler:
     
     Available number of grains
     100, 300, 500, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000
+
+    * This module is deprecated. Use cmb.random instead.
     """
     def __init__(self, d_ang=10., p1=360., p2=90., ngrain = None, echo=True):
+        """
+        Here, not the number of grains but the incremental angle is
+        imposed. For this reason, obtainment of RVE consisting of a specific number
+        of grains is not possible.
+        """
         temp = []
+        ## Emerpcial incremental angle is written here.
 	if ngrain==None: 
             if d_ang==None: dang = 10.
 	    else: dang = d_ang

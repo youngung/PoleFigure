@@ -1,3 +1,7 @@
+"""
+Pythonized subroutine EULER from VPSC7
+"""
+
 import numpy as np
 import math
 
