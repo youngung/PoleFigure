@@ -139,21 +139,32 @@ def __trim0__(h):
                 hx[i,j] = 0.
     return hx
 
-def __ortho__(v):
-    """
-    Orthogonal sample symmetry to a vector (v) in 3D
-    """
-    v1 = np.aray([a[0], a[1], a[2]])
-    v2 = np.array([-a[0], a[1], a[2]])
-    v3 = np.array([a[0], -a[1], a[2]])
-    v4 = np.array([-a[0], -a[1], a[2]])
-    
-    v5 = v1.copy()* -1
-    v6 = v2.copy()* -1
-    v7 = v3.copy()* -1
-    v8 = v4.copy()* -1
 
-    return v1, v2, v3, v4
+""" -- mmm sample symmetry is found in COD_conv.py """
+def __mmm__():
+    m0 = [[ 1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    m1 = [[ 1, 0, 0], [0,-1, 0], [0, 0,-1]]
+    m2 = [[-1, 0, 0], [0, 1, 0], [0, 0,-1]]
+    m3 = [[-1, 0, 0], [0,-1, 0], [0, 0, 1]]
+    h = np.array([m0,m1,m2,m3])
+    return h
+
+### deprecated ###
+# def __ortho__(v): 
+#     """
+#     Orthogonal sample symmetry to a vector (v) in 3D
+#     """
+#     v1 = np.aray([a[0], a[1], a[2]])
+#     v2 = np.array([-a[0], a[1], a[2]])
+#     v3 = np.array([a[0], -a[1], a[2]])
+#     v4 = np.array([-a[0], -a[1], a[2]])
+    
+#     v5 = v1.copy()* -1
+#     v6 = v2.copy()* -1
+#     v7 = v3.copy()* -1
+#     v8 = v4.copy()* -1
+
+#     return v1, v2, v3, v4
 
 
 ## cubic symmetry
@@ -190,6 +201,15 @@ def cubic():
     for i in range(len(H)):
         H[i] = __trim0__(h=H[i])
     return H    
+
+def cubic_centro():
+    h_old = cubic()
+    h_new = []
+    h_n = [[-1,0,0],[0,-1,0],[0,0,-1]]
+    for i in range(len(h_old)):
+        h_new.append(np.dot(h_old[i],h_n))
+    return h_new
+        
 
 def triclinic():
     H = []
