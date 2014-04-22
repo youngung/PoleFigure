@@ -4,13 +4,6 @@ setup(name='U-PoleFigure',
       description='A simple pole figure plotter',
       author='Youngung Jeong',
       author_email='youngung.jeong@gmail.com',
-      packages=['analysis','pf','symmetry','euler','rve']
-      )
-# setup(name='upf',
-#       version='1.0',
-#       py_modules=['cmb','upf','sym','randomEuler','epf2dfc','epf_khi_trimmer'],
-#       description='The ultimate pole figure plotting system on python',
-#       author ='Youngung Jeong',
-#       author_email='youngung.jeong@gmail.com',
-#       package_dir={''}
-#       )
+      packages=['upf.analysis','upf.euler','upf.pf','upf.rve','upf.xsym'],
+      package_dir={'upf':'src/upf'}
+)
