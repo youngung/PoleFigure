@@ -4,6 +4,15 @@ setup(name='U-PoleFigure',
       description='A simple pole figure plotter',
       author='Youngung Jeong',
       author_email='youngung.jeong@gmail.com',
-      packages=['upf.analysis','upf.euler','upf.pf','upf.rve','upf.xsym'],
-      package_dir={'upf':'src/upf'}
+      packages=['UPF',
+                'UPF.conv','UPF.euler','UPF.pf','UPF.pf_analysis','UPF.rve','UPF.xsym'
+            ],
+      package_dir={'UPF':'src/UPF',
+                   'UPF.conv':'src/UPF/conv',
+                   'UPF.euler':'src/UPF/euler',
+                   'UPF.pf':'src/UPF/pf',
+                   'UPF.pf_analysis':'src/UPF/pf_analysis',
+                   'UPF.rve':'src/UPF/rve',
+                   'UPF.xsym':'src/UPF/xsym'
+               },
 )

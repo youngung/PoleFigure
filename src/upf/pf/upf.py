@@ -126,8 +126,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib #matplotlib as raw
 import os, glob, math
-from randomEuler import randomEuler as re
-from euler import euler # in euler module def euler:
+
+
+from UPF.euler import euler
+euler = euler.euler
+from UPF.euler import randomEuler
+re = randomEuler.randomEuler
                         # A-matrix and Euler angles
 import time
 import random
@@ -2212,10 +2216,11 @@ class polefigure:
         csym   = 'cubic'
         """
         start = time.time()
-        from sym import cv
-        from sym import cubic, hexag
+        from UPF.xsym import sym
+        cv = sym.cv
+        cubic = sym.cubic
+        hexag = sym.hexag
         #from sym_cy import cubic, hexag
-        import sym    #python compiled
         #import sym_cy #cython compiled
         #from sym.py cvec, cubic, and hexgonal modules are brought in
         if miller==None:
